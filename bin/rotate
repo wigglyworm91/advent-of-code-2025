@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+
+type Grid = list[list[str]]
+
+def is_square(rows: Grid) -> bool:
+    """Check if input is a square grid (all rows same length)"""
+    if not rows:
+        return True
+    lengths = [len(row) for row in rows]
+    return len(set(lengths)) == 1 and lengths[0] == len(rows)
+
+def square_to_diamond(rows: Grid) -> Grid:
+    """Convert square grid to diamond (triangle) by walking diagonals"""
+    n = len(rows)
+    result = []
+    
+    for d in range(2 * n - 1):
+        diagonal = []
+        
+        if d < n:
+            start_row = d
+            start_col = 0
+        else:
+            start_row = n - 1
+            start_col = d - n + 1
+        
+        r, c = start_row, start_col
+        while r >= 0 and c < n:
+            diagonal.append(rows[r][c])
+            r -= 1
+            c += 1
+        
+        result.append(diagonal)
+    
+    return result
+
+def diamond_to_square(rows: Grid) -> Grid:
+    """Convert diamond (triangle) back to square grid"""
+    # a
+    # b c 
+    # d e f
+    # g h
+    # i
+    # aka
+    #   a
+    #  b c
+    # d e f
+    #  g h
+    #   i
+    # needs to become
+    # d b a
+    # g e c
+    # i h f
+
+    n = len(rows) // 2 + 1
+
+    #print(f'{rows=!r}', file=sys.stderr)
+
+    # it's easiest to do this by destroying the input (which is fine)
+    out = []
+    for j in range(n):
+        out.append([rows[i].pop(0) for i in range(n)])
+        rows.pop(0)
+
+    # and now we just reverse each row
+    out = [row[::-1] for row in out]
+
+    #print(f'{out=!r}', file=sys.stderr)
+
+
+    return out
+    
+    n = (len(rows) + 1) // 2
+    grid = {}
+    
+    for d, diag in enumerate(rows):
+        if d < n:
+            start_row = d
+            start_col = 0
+        else:
+            start_row = n - 1
+            start_col = d - n + 1
+        
+        r, c = start_row, start_col
+        for cell in diag:
+            grid[(r, c)] = cell
+            r -= 1
+            c += 1
+    
+    result = []
+    for r in range(n):
+        row_cells = [grid.get((r, c), pad) for c in range(n)]
+        result.append(row_cells)
+    
+    return result
+
+def rotate45(lines: Grid) -> Grid:
+    """Rotate grid by 45 degrees"""
+    if not lines:
+        return []
+    
+    if is_square(lines):
+        return square_to_diamond(lines)
+    else:
+        return diamond_to_square(lines)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Rotate a grid by 45 degrees',
+        epilog='Note: Despite what the interface implies, only 45° rotations are actually implemented.'
+    )
+    parser.add_argument('degrees', type=int, nargs='?', default=45, choices=[45*i for i in range(-9,9)],
+                       help='Degrees to rotate (default: 45)')
+    parser.add_argument('-c', '--character-wise', action='store_true', help='Operate character by character instead of word by word')
+    args = parser.parse_args()
+    
+    lines = [line.rstrip('\n') for line in sys.stdin if line.strip()]
+    if not args.character_wise:
+        lines = [l.split() for l in lines] # otherwise use python's implicit splitting by character
+    deg = args.degrees % 360
+    while deg >= 90:
+        lines = reversed(list(zip(*lines)))
+        deg -= 90
+    while deg > 0:
+        lines = rotate45(lines)
+        deg -= 45
+    for line in lines:
+        print(' '.join(line))
